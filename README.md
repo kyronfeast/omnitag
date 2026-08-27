@@ -66,11 +66,18 @@ two readers, one policy: line 4 sees only pails
 kept 8 · dropped 20 ({'pickles-fresh': 20})
 ```
 
-## Architecture
+## Documentation
 
-See [`DESIGN.md`](DESIGN.md) for the full design — the driver abstraction, what
-is reused from llrpkit vs. built new, capability negotiation, and the roadmap
-for adding vendor drivers.
+Full docs live in [`docs/`](docs/) and build into a site with mkdocs (install
+guide, quickstart, architecture, a plain-language concurrency/CPU page, per-driver
+guides, the WYUAN protocol reference, and an API index):
+
+```console
+$ pip install -e ".[docs]"
+$ mkdocs serve          # http://127.0.0.1:8000
+```
+
+The [`DESIGN.md`](DESIGN.md) decision record has the deeper rationale and roadmap.
 
 ## Development
 
@@ -80,7 +87,8 @@ $ pytest
 $ ruff check . && mypy src
 ```
 
-You do not need an RFID reader — llrpkit's emulator is the development target.
+You do not need an RFID reader — llrpkit's emulator (and a fake serial port for
+the WYUAN driver) are the development targets.
 
 ## License
 

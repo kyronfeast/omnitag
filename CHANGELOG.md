@@ -39,6 +39,15 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   LLRP reader in a single fleet under one shared ignore policy; `examples/demo.py`
   and `examples/mixed_fleet.py`; the architecture note in `DESIGN.md`.
 
+- **Documentation site** (`mkdocs.yml`, `docs/`): install guide, quickstart,
+  architecture, a plain-language concurrency/CPU page, per-driver guides, the
+  WYUAN protocol reference, and an API index — with nav, built under `--strict`.
+  Adds the `[docs]` extra. Every source module also gained a plain-language
+  "in plain words" intro so a non-expert can follow what each file does.
+- **"Using it from C#/C++/any language" guide** + `examples/service.py`: run
+  OmniTag as a service that emits tags as JSON (stdout / MQTT / webhook), so a
+  non-Python app consumes the stream over the wire without linking Python.
+
 ## [0.0.1] - name reservation
 
 Placeholder release reserving the `omnitag` name on PyPI.

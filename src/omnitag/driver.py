@@ -1,5 +1,14 @@
 """The driver seam: one interface every reader backend implements.
 
+In plain words: this file defines the "shape" that every reader has to fit. A
+reader from any brand gets a small translator (a *driver*) that turns its own
+language into the same tidy tag record. Because they all fit the same shape, the
+rest of the program never has to know or care which brand of reader it's talking
+to. This file is that shape (`ReaderDriver`), a description of what a given reader
+can do (`DriverCapabilities`), and a tag stamped with which reader saw it
+(`SourcedTag`).
+
+
 OmniTag's whole idea lives here. A :class:`ReaderDriver` turns some reader's
 native protocol into a stream of llrpkit :class:`~llrpkit.TagReport` objects —
 the normalized unit the entire value layer (policy, GS1 decode, presence,

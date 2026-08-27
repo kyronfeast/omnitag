@@ -1,5 +1,12 @@
 """The fleet manager: drive N readers of mixed type as one stream.
 
+In plain words: a "fleet" is just a group of readers running at the same time.
+This file lets you hand it several readers of any mix — Impinj, WYUAN, whatever —
+and get back **one** combined feed of tags, where each tag still remembers which
+reader saw it. One set of ignore rules covers the whole group. It's the "one
+screen for all my readers" piece.
+
+
 A :class:`Fleet` runs each driver's inventory concurrently and merges every
 observation into a single async stream of :class:`~omnitag.driver.SourcedTag`
 — one pane of glass over a mixed set of readers. Because every driver yields

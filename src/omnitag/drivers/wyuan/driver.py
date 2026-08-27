@@ -1,5 +1,13 @@
 """WyuanReader — a serial UHFReader288-family driver for OmniTag.
 
+In plain words: this is the translator for a WYUAN reader plugged in over a serial
+cable. It uses the byte "phrasebook" from `protocol.py` to keep asking the reader
+"what tags do you see?" and turns each reply into OmniTag's common tag record.
+Because serial reads make the program wait, it sits on the safe background-thread
+base (`ThreadedDriver`) so it can share a group with faster readers without
+slowing them down.
+
+
 A blocking serial reader, so it is a :class:`~omnitag.threaded.ThreadedDriver`:
 the poll loop runs on its own worker thread and reads flow into the async merge
 through the base class, meaning a WYUAN reader can share a fleet with an Impinj

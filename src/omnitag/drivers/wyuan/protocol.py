@@ -1,5 +1,13 @@
 """UHFReader288-family serial protocol codec (pure, hardware-free).
 
+In plain words: a serial reader and the computer talk to each other in little
+packets of bytes, like short coded telegrams. This file is the "phrasebook" — it
+knows how to *write* a request ("please list the tags you see") and how to *read*
+the reply back into normal data. It's pure translation with no hardware involved,
+so every rule in it can be tested on its own. The `driver.py` next door uses this
+phrasebook to actually talk to a reader over the cable.
+
+
 This is the wire format documented in the "UHF RFID Reader Series User Manual
 V2.20": a byte-framed, CRC16-checked request/response protocol over serial
 (default 57600 8N1, no parity, LSB first).

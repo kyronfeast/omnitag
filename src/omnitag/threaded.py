@@ -1,5 +1,13 @@
 """``ThreadedDriver`` — the safe home for blocking vendor SDKs.
 
+In plain words: some readers (cheap serial ones) make the program *stop and wait*
+every time they fetch a tag. If that waiting happens on the main line, every other
+reader is stuck waiting too — like one person hogging a shared phone line. This
+file gives such a reader its **own private line** (a background thread) and passes
+its tags back safely, so a slow reader can never freeze a fast one. A serial
+driver just inherits from this and fills in "how do I read one tag"; all the
+tricky threading is handled here, once.
+
 A vendor SDK that *blocks* (waits synchronously for the next read) must never
 run on the shared event loop: a single blocking call freezes the servicing of
 every other reader, which is exactly the co-hosted-SDK starvation that takes

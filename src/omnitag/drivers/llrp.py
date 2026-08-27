@@ -1,5 +1,11 @@
 """The LLRP driver — a thin adapter over llrpkit's ``Reader``.
 
+In plain words: this is the translator for Impinj readers (and any reader that
+speaks the standard network language called LLRP). The hard work of speaking LLRP
+already lives in the llrpkit library, so this file is short — it mostly forwards
+calls to llrpkit and relabels the answers into OmniTag's common shape.
+
+
 This is the reference driver and the reason OmniTag can exist cheaply: llrpkit
 already turns the LLRP wire protocol into a stream of ``TagReport``, so the
 adapter is almost pure delegation. It maps llrpkit's connection lifecycle and

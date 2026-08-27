@@ -1,0 +1,47 @@
+site_name: OmniTag RFID
+site_description: One interface for every RFID reader — a multi-vendor reader layer built on llrpkit.
+repo_url: https://github.com/kyronfeast/omnitag
+repo_name: kyronfeast/omnitag
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.footer
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - tables
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+
+nav:
+  - Home: index.md
+  - Install: install.md
+  - Quickstart: quickstart.md
+  - Architecture: architecture.md
+  - Keeping it light (concurrency & CPU): concurrency.md
+  - Using it from C#/C++/any language: for-other-languages.md
+  - Drivers:
+      - Overview: drivers/index.md
+      - LLRP (Impinj) driver: drivers/llrp.md
+      - WYUAN serial driver: drivers/wyuan.md
+      - WYUAN protocol reference: wyuan-protocol.md
+  - API reference: api.md
+  - Contributing: contributing.md

@@ -21,3 +21,6 @@ htmlcov/
 *.swp
 .idea/
 .vscode/
+
+# mkdocs build output
+site/
