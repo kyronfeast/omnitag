@@ -37,6 +37,14 @@ class DriverCapabilities:
     model: str = ""
     firmware: str = ""
     antenna_count: int = 0
+    #: how this driver must be run so it never starves the others:
+    #: "loop"    — async-native, safe to share the event loop (llrpkit)
+    #: "thread"  — wraps a blocking SDK; runs on its own worker thread
+    #: "process" — flaky/native SDK; full process isolation
+    #: The fleet reads this to place each driver correctly. A blocking driver
+    #: declared "loop" would recreate the classic co-hosted-SDK starvation, so
+    #: this field is how OmniTag makes that mistake impossible.
+    isolation: str = "loop"
     #: optional features, gated by drivers that support them
     gpio: bool = False
     tag_access: bool = False

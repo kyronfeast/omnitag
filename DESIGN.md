@@ -134,17 +134,68 @@ The honest cost: the *seam* and the *LLRP adapter* are small. Every **new vendor
 driver is real work**, done one at a time by reverse-engineering the vendor SDK or
 sniffing the wire. Start with whatever hardware is physically on the desk.
 
+## Concurrency & CPU (decision record)
+
+**Context.** A real mixed-reader site running Impinj's Octane SDK and a vendor
+SDK *in one process* saw reads silently vanish. Not RF, not protocol confusion:
+the two SDKs starved each other. Both block (wait synchronously for the next
+read); co-hosted on one thread, whichever one is *inside* a blocking call freezes
+the servicing of the other, whose reader buffer then overflows and drops tags.
+OmniTag will host multiple readers in one place too, so it must make that failure
+mode impossible — while staying CPU-light (the Odoo host is modest).
+
+**Decision.** Drivers declare how they must run, and the model enforces it:
+
+- **`isolation = "loop"` — async-native drivers share one event loop.** llrpkit
+  is non-blocking, so any number of LLRP readers multiplex on a single thread at
+  near-zero idle cost. This is the cheapest possible model and the default. The
+  rule that protects it: **llrpkit stays strictly non-blocking.**
+- **`isolation = "thread"` — blocking drivers run on their own worker thread.**
+  A vendor SDK that blocks is bridged into the async merge through a queue
+  (`ThreadedDriver`), so it can never stall the loop that serves the other
+  readers. The starvation is designed out at the seam: a blocking driver
+  *cannot* be placed on the shared loop by construction.
+- **`isolation = "process"` — flaky/native SDKs get a full process.** For an SDK
+  that hangs or crashes, a separate process keeps a bad vendor from taking the
+  fleet down, at the cost of a second interpreter. Reserved for when "thread"
+  isn't enough.
+
+**Why not process-isolate everything?** It's the most robust but the least
+light: N interpreters, N times the memory, IPC overhead. For a handful of
+async LLRP readers that never block, isolation buys nothing and costs real CPU.
+Match the isolation to the driver, don't pay for it uniformly.
+
+**CPU-light rules that fall out of this:**
+
+1. **Prefer presence events over the raw read firehose downstream.** A tag read
+   300×/s becomes one *arrived* + one *departed*. This is the single biggest
+   CPU/bandwidth saver for the Odoo path; llrpkit already has the presence
+   tracker, and the fleet should default the ERP-facing stream to it.
+2. **Block, never busy-poll.** A blocking driver must *wait* for the next read
+   (≈0% idle CPU), not spin a `while True: poll()` loop (100% of a core doing
+   nothing). Baked into the `ThreadedDriver` contract.
+3. **Bounded queues (backpressure) everywhere.** The thread bridge uses a
+   bounded, drop-oldest queue so a slow sink can't balloon memory or spin the
+   loop. Filter early with host-side policy so dropped tags cost nothing
+   downstream.
+
+**Status:** the `isolation` capability, the `ThreadedDriver` base (thread
+lifecycle, thread-safe hand-off, host-side policy, bounded backpressure), and a
+test proving a blocking reader cannot starve an async one are **implemented**.
+Process isolation is designed but not yet built.
+
 ## Repository shape
 
 ```
 omnitag/
   src/omnitag/
     __init__.py
-    driver.py          # ReaderDriver Protocol, ReaderCapabilities
+    driver.py          # ReaderDriver Protocol, DriverCapabilities, SourcedTag
+    threaded.py        # ThreadedDriver: safe base for blocking vendor SDKs
     fleet.py           # drive many drivers → one normalized stream
     drivers/
       llrp.py          # thin adapter over llrpkit (the reference driver)
-      wyuan.py         # stub first: connect + inventory TODO
+      wyuan.py         # future: subclass ThreadedDriver (blocking SDK)
     dashboard/         # reuse llrpkit's, gated by capabilities
   pyproject.toml       # name = "omnitag"; depends on: llrpkit
   docs/
@@ -156,27 +207,29 @@ into a larger platform.
 
 ## Roadmap
 
-1. **Seam + LLRP adapter.** Define `ReaderDriver` / `ReaderCapabilities`; wrap
-   llrpkit as the `llrp` driver. Prove the whole value layer runs through the seam
-   with zero behavior change against the emulator. *(No new hardware needed.)*
-2. **Fleet manager.** Generalize llrpkit's `registry.py` to drive N drivers of
-   mixed type into one stream + one policy + one dashboard.
-3. **First proprietary driver.** Pick the vendor you actually own. Stub
-   `inventory()`, get one EPC to flow, then fill in. Capability-flag whatever it
-   can't do.
-4. **Dashboard capability gating.** Panels appear/disappear per
-   `reader.capabilities`.
+1. **Seam + LLRP adapter.** ✅ `ReaderDriver` / `DriverCapabilities`; llrpkit
+   wrapped as the `llrp` driver. Whole value layer runs through the seam.
+2. **Fleet manager.** ✅ N mixed drivers → one stream + one policy.
+3. **Concurrency model.** ✅ `isolation` capability + `ThreadedDriver` so a
+   blocking driver can't starve async ones (see the decision record above).
+4. **First proprietary driver.** ✅ `WyuanReader` — the UHFReader288 serial
+   protocol, coded from the manual, fully tested against a fake serial port.
+   **Pending: verification against a physical reader** (the three VERIFY points in
+   `docs/wyuan-protocol.md`), and RSSI→dBm calibration.
+5. **Dashboard capability gating.** Panels appear/disappear per
+   `reader.capabilities` — not yet built.
 
-Phase 1 is doable today entirely against llrpkit's emulator — the seam can be
-proven with no WYUAN unit in hand.
+Phases 1–4 are done and run entirely against llrpkit's emulator + a fake serial
+port — no hardware in hand. Only the physical-reader confirmation remains.
 
 ## Open questions
 
-- **Do we actually have a WYUAN (or other proprietary) unit on the way?** That
-  decides whether driver #2 is a real build or stays a documented stub.
-- **Emulator for proprietary drivers?** llrpkit's emulator is LLRP-only. A fake
-  WYUAN would let the `wyuan` driver be CI-tested with no hardware — worth it if we
-  commit to that vendor. (Mirrors how the LLRP emulator made llrpkit testable.)
+- ~~**Do we have a WYUAN unit?**~~ Driver is built from the manual and tested
+  against a fake serial port; a physical unit is needed only to confirm the three
+  VERIFY points and calibrate RSSI.
+- ~~**Emulator for proprietary drivers?**~~ Solved cheaply: the driver takes an
+  injected transport, so a fake serial replays canned frames — no separate
+  emulator process needed. (Same zero-hardware philosophy as llrpkit's emulator.)
 - ~~**Naming.**~~ Settled: **OmniTag RFID**, package `omnitag`. Reserve the name on
   PyPI early (an empty first release) so nobody else claims it while you build —
   same lesson llrpkit just taught.

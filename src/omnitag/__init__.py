@@ -13,7 +13,9 @@ proprietary-reader drivers to follow.
 
 from omnitag.driver import DriverCapabilities, ReaderDriver, SourcedTag
 from omnitag.drivers.llrp import LLRPDriver
+from omnitag.drivers.wyuan import WyuanReader
 from omnitag.fleet import Fleet
+from omnitag.threaded import ThreadedDriver
 
 __version__ = "0.0.1"
 
@@ -23,5 +25,7 @@ __all__ = [
     "LLRPDriver",
     "ReaderDriver",
     "SourcedTag",
+    "ThreadedDriver",
+    "WyuanReader",
     "__version__",
 ]
