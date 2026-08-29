@@ -43,5 +43,6 @@ nav:
       - LLRP (Impinj) driver: drivers/llrp.md
       - WYUAN serial driver: drivers/wyuan.md
       - WYUAN protocol reference: wyuan-protocol.md
+  - Encoding tags (Zebra printer): printers.md
   - API reference: api.md
   - Contributing: contributing.md

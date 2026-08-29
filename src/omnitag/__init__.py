@@ -15,6 +15,7 @@ from omnitag.driver import DriverCapabilities, ReaderDriver, SourcedTag
 from omnitag.drivers.llrp import LLRPDriver
 from omnitag.drivers.wyuan import WyuanReader
 from omnitag.fleet import Fleet
+from omnitag.printers import ZebraPrinter
 from omnitag.threaded import ThreadedDriver
 
 __version__ = "0.0.1"
@@ -27,5 +28,6 @@ __all__ = [
     "SourcedTag",
     "ThreadedDriver",
     "WyuanReader",
+    "ZebraPrinter",
     "__version__",
 ]

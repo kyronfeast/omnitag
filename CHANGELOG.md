@@ -48,6 +48,14 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   OmniTag as a service that emits tags as JSON (stdout / MQTT / webhook), so a
   non-Python app consumes the stream over the wire without linking Python.
 
+- **Tag encoding — `ZebraPrinter`** (`omnitag.printers`): drive a Zebra ZT411
+  (and Link-OS kin) to print a label *and* write an EPC into its tag, over raw
+  ZPL on TCP 9100. A pure ZPL codec (`zpl.py`: `^RFW` write/read builders with
+  EPC validation) and an async `ZebraPrinter` with an injectable transport, so
+  it's fully tested with no printer. This closes OmniTag's loop — read tags with
+  a driver, mint new ones with the printer. Adds `examples/encode_demo.py` (read
+  → encode, no hardware) and `docs/printers.md`.
+
 ## [0.0.1] - name reservation
 
 Placeholder release reserving the `omnitag` name on PyPI.

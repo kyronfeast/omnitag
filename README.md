@@ -10,9 +10,10 @@ reference driver, and merges any mix of readers into a single stream with a
 dashboard apply across the whole fleet regardless of what each reader speaks
 underneath.
 
-> 🚧 **Pre-alpha.** The driver seam, the LLRP driver, and the fleet manager are
-> in place and tested against llrpkit's emulator (no hardware required).
-> Proprietary-reader drivers (Impinj-E710 OEM modules and others) are next.
+> 🚧 **Pre-alpha.** The driver seam, the LLRP driver, the WYUAN serial driver,
+> the fleet manager, and a **Zebra ZT411 tag encoder** (read *and* write tags)
+> are in place and tested against llrpkit's emulator and fakes — no hardware
+> required. A capability-gated dashboard and more drivers are next.
 
 ## Why
 

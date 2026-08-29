@@ -7,6 +7,7 @@ from omnitag import (
     Fleet,              # run many drivers as one merged stream
     LLRPDriver,         # driver for Impinj / LLRP readers
     WyuanReader,        # driver for WYUAN / UHFReader288 serial readers
+    ZebraPrinter,       # encode + print RFID labels (ZT411 and Link-OS kin)
     ReaderDriver,       # the driver contract (a typing Protocol)
     ThreadedDriver,     # base class for blocking-SDK drivers
     DriverCapabilities, # what a reader can do (vendor-neutral)
@@ -32,6 +33,18 @@ after connecting, and stream tags from `inventory(**opts)`.
   [LLRP driver](drivers/llrp.md) page.
 - `WyuanReader(port, *, reader_id=None, baudrate=57600, antenna=None, transport=None, ...)`
   — see the [WYUAN driver](drivers/wyuan.md) page.
+
+## ZebraPrinter
+
+`ZebraPrinter(host, port=9100, *, printer_id=None, transport=None)` — encode and
+print RFID labels on a Zebra ZT411 (and Link-OS kin). Async context manager.
+
+- `await printer.encode_epc(epc, *, bank="E", human_text=None, barcode=False) -> str`
+  — print one label and write `epc` into its tag; returns the EPC hex. Validates
+  the EPC before sending.
+- `await printer.print_zpl(raw)` — send arbitrary ZPL (custom label templates).
+
+See [Encoding tags](printers.md).
 
 ## DriverCapabilities
 
