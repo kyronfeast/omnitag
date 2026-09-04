@@ -47,6 +47,7 @@ callers branch on *capabilities*, never on vendor.
 import asyncio
 from omnitag import Fleet, LLRPDriver
 
+
 async def main() -> None:
     # a mixed fleet — here two LLRP readers; a WYUAN driver would sit alongside
     async with (
@@ -56,6 +57,7 @@ async def main() -> None:
         fleet = Fleet([a, b])
         async for sourced in fleet.stream(policy=my_policy):
             print(sourced.reader_id, sourced.tag.epc_hex, sourced.tag.category)
+
 
 asyncio.run(main())
 ```

@@ -4,14 +4,14 @@ Everything you normally need is importable straight from the top-level package:
 
 ```python
 from omnitag import (
-    Fleet,              # run many drivers as one merged stream
-    LLRPDriver,         # driver for Impinj / LLRP readers
-    WyuanReader,        # driver for WYUAN / UHFReader288 serial readers
-    ZebraPrinter,       # encode + print RFID labels (ZT411 and Link-OS kin)
-    ReaderDriver,       # the driver contract (a typing Protocol)
-    ThreadedDriver,     # base class for blocking-SDK drivers
-    DriverCapabilities, # what a reader can do (vendor-neutral)
-    SourcedTag,         # a tag + the id of the reader that produced it
+    Fleet,  # run many drivers as one merged stream
+    LLRPDriver,  # driver for Impinj / LLRP readers
+    WyuanReader,  # driver for WYUAN / UHFReader288 serial readers
+    ZebraPrinter,  # encode + print RFID labels (ZT411 and Link-OS kin)
+    ReaderDriver,  # the driver contract (a typing Protocol)
+    ThreadedDriver,  # base class for blocking-SDK drivers
+    DriverCapabilities,  # what a reader can do (vendor-neutral)
+    SourcedTag,  # a tag + the id of the reader that produced it
 )
 ```
 
