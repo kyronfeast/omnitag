@@ -48,13 +48,20 @@ The serial port is injectable — pass any object with `read`/`write`/`close`. T
 use a fake that replays canned reader frames, so the whole driver is verified with
 no physical reader (the same zero-hardware idea as llrpkit's emulator).
 
-## Verify on first real read
+## Verified against the vendor SDK
 
-The manual is slightly ambiguous on three fields. Each is isolated to one line of
-code so a mismatch is trivial to fix — details in the [protocol
-reference](../wyuan-protocol.md):
+The wire format is checked line-by-line against the vendor's own SDK — the
+UHFReader288 DLL manual and the C++/C# demo programs that ship with W-series
+readers — so the fields that are easy to get wrong are settled, not assumed
+(citations in the [protocol reference](../wyuan-protocol.md)):
 
-1. **EPC length unit** — assumed bytes; may be words on some firmware.
-2. **Antenna byte** — decoded as a 1/4/8-port bitmask; 16-port readers use a plain
-   index.
-3. **RSSI** — raw units; turning it into real dBm needs a per-model calibration.
+1. **EPC length unit** — a **byte** count.
+2. **Antenna byte** — a bitmask on 1/4/8-port readers, a plain index on 12/16-port
+   readers. Set `antenna_count=` to your reader's port count and the driver picks
+   the right decode (anything over 8 ports is index mode).
+3. **RSSI** — raw units, so it stays out of `rssi_dbm`; real dBm would need a
+   per-model calibration the vendor doesn't publish.
+
+Two extras the SDK revealed: pass `fast_id=True` to get the tag's TID alongside
+its EPC on Impinj Monza tags (`tag.tid`), and a reader left in the vendor's
+*real-time* push mode still streams — the driver recognises those frames too.

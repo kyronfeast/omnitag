@@ -119,9 +119,7 @@ def build_encode(
             f"bank 'E' (EPC-96) needs {EPC96_HEX_LEN} hex chars; got {len(epc_hex)}. "
             "Use bank='A' for other EPC lengths."
         )
-    want_rs = session_setup or any(
-        p is not None for p in (program_position, retry, error_action)
-    )
+    want_rs = session_setup or any(p is not None for p in (program_position, retry, error_action))
     x, y = origin
     lines = ["^XA"]
     if want_rs:
@@ -147,6 +145,4 @@ def build_read(*, field: int = 1, bank: str = "E", header: str = "EPC:") -> byte
     Uses ``^RFR`` to read the bank into field ``field`` and ``^HV#,n,h`` (Host
     Verification) to return it, prefixed with ``header``.
     """
-    return (
-        f"^XA^RFR,H,,,{bank}^FN{field}^FS^HV{field},,{header}^FS^XZ\n"
-    ).encode("ascii")
+    return (f"^XA^RFR,H,,,{bank}^FN{field}^FS^HV{field},,{header}^FS^XZ\n").encode("ascii")

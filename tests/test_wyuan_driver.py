@@ -133,3 +133,51 @@ async def test_wyuan_and_llrp_in_one_fleet_under_one_policy() -> None:
     assert saw["impinj"] >= 3 and saw["wyuan"] >= 3  # both readers in one stream
     # the shared policy dropped the WYUAN's pickles on antenna 1
     assert wyuan_epcs == {PAIL.hex()}
+
+
+def make_realtime_frame(epc: bytes, *, antenna_byte: int = 0x01, adr: int = 0) -> bytes:
+    """Build a 0xEE/0x00 push frame (real-time mode): Ant, Len, EPC, RSSI — no Num."""
+    data = bytes([antenna_byte, len(epc)]) + epc + bytes([0x48])
+    body = bytes([len(data) + 5, adr, p.REALTIME, p.RT_TAG]) + data
+    crc = p.crc16(body)
+    return body + bytes([crc & 0xFF, (crc >> 8) & 0xFF])
+
+
+def make_heartbeat_frame(*, adr: int = 0) -> bytes:
+    """A 0xEE/0x28 heartbeat: PacketNo(4), AntStatus(4), TotalCount(4)."""
+    data = bytes(4) + bytes([1, 0, 0, 0]) + bytes(4)
+    body = bytes([len(data) + 5, adr, p.REALTIME, p.RT_HEARTBEAT]) + data
+    crc = p.crc16(body)
+    return body + bytes([crc & 0xFF, (crc >> 8) & 0xFF])
+
+
+async def test_wyuan_driver_consumes_realtime_push_mode() -> None:
+    # A reader left in real-time mode ignores our poll and streams 0xEE frames,
+    # interleaved with heartbeats. The driver must yield the tags and skip the rest.
+    pushed = make_heartbeat_frame() + make_realtime_frame(PAIL) + make_realtime_frame(PICKLE)
+    driver = WyuanReader(reader_id="wyuan-rt", transport=FakeSerial(pushed))
+    async with driver:
+        tags = await _collect(driver, 2)
+    assert {t.epc.hex() for t in tags} == {PAIL.hex(), PICKLE.hex()}
+    assert all(t.rssi_dbm is None for t in tags)  # raw RSSI is never passed off as dBm
+
+
+async def test_wyuan_driver_decodes_index_antenna_on_16_port_reader() -> None:
+    # On a 16-port unit the Ant byte is a 0-based index: 0x0B → antenna 12.
+    fake = FakeSerial(make_inventory_response([PAIL], antenna_byte=0x0B))
+    driver = WyuanReader(reader_id="wyuan-16", transport=fake, antenna_count=16)
+    async with driver:
+        tags = await _collect(driver, 1)
+    assert tags[0].antenna == 12
+
+
+async def test_wyuan_driver_surfaces_fast_id_tid() -> None:
+    tid = bytes.fromhex("e28011702000000000000001")
+    data = bytearray([0x01, 0x01, 0x80 | (len(PAIL) + len(tid))]) + PAIL + tid + bytes([0x50])
+    body = bytes([len(data) + 5, 0, p.INVENTORY, p.ST_DONE]) + bytes(data)
+    crc = p.crc16(body)
+    frame = body + bytes([crc & 0xFF, (crc >> 8) & 0xFF])
+    driver = WyuanReader(reader_id="wyuan-fid", transport=FakeSerial(frame), fast_id=True)
+    async with driver:
+        tags = await _collect(driver, 1)
+    assert tags[0].epc == PAIL and tags[0].tid == tid

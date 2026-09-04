@@ -61,6 +61,19 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   position). Confirmed `^RFW,H,,,E` is correct for a 96-bit hex EPC and `bank="A"`
   is valid on the ZT400 series; `build_read` now uses the documented `^HV#,n,h`
   host-verification form.
+- **WYUAN driver verified against the vendor SDK.** The three fields previously
+  marked VERIFY are settled from the UHFReader288 DLL manual and the shipped
+  C++/C# demo sources: EPC length is a byte count (as implemented), RSSI is raw
+  (as implemented), and the antenna byte is a bitmask on 1/4/8-port readers but a
+  0-based index on 12/16-port readers — `antenna_from_byte`/`parse_inventory`
+  now take `antenna_count` and `WyuanReader` threads its own through, so 12/16-port
+  units decode correctly. Also from the SDK: the `QValue` byte's flag bits are
+  modelled (`fast_id=`, `phase=`, `statistics=`) with Q/session/antenna range
+  validation; FastID blocks split EPC from the 12-byte TID (`TagReport.tid`); the
+  vendor's real-time push mode (`0xEE` tag frames + `0x28` heartbeats) is parsed
+  and consumed, so a reader left in that mode streams instead of stalling; the
+  `0x26` statistic packet has a parser; `scan_time=0` (unlimited) is honoured;
+  truncated payloads raise `ProtocolError` instead of silently mis-parsing.
 
 ## [0.0.1] - name reservation
 
