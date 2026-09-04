@@ -16,13 +16,15 @@ which is why `ZebraPrinter` is plain asyncio, not a blocking driver.
 import asyncio
 from omnitag import ZebraPrinter
 
+
 async def main() -> None:
     async with ZebraPrinter("192.168.1.50", printer_id="line-4") as printer:
         await printer.encode_epc(
             "E28011700000020000000042",  # a 96-bit EPC (24 hex chars)
-            human_text="PAIL #42",       # printed on the label face
-            barcode=True,                # a Code 128 of the EPC, too
+            human_text="PAIL #42",  # printed on the label face
+            barcode=True,  # a Code 128 of the EPC, too
         )
+
 
 asyncio.run(main())
 ```
@@ -36,7 +38,7 @@ The point of having both a reader and a printer is the loop between them:
 
 ```python
 async for tag in reader.inventory(max_tags=1):
-    await printer.encode_epc(derive_new_epc(tag))   # mint a fresh label
+    await printer.encode_epc(derive_new_epc(tag))  # mint a fresh label
 ```
 
 `examples/encode_demo.py` runs this end to end with no hardware — it reads a tag
@@ -69,9 +71,9 @@ it) and retries. You can control that from `encode_epc`:
 ```python
 await printer.encode_epc(
     epc,
-    retry=3,               # attempt up to 3 labels on encode failure
-    error_action="P",      # then Pause (N = drop and move on, E = Error)
-    program_position="F0", # where on the label the tag is encoded
+    retry=3,  # attempt up to 3 labels on encode failure
+    error_action="P",  # then Pause (N = drop and move on, E = Error)
+    program_position="F0",  # where on the label the tag is encoded
 )
 ```
 

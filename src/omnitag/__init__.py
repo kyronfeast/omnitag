@@ -18,7 +18,7 @@ from omnitag.fleet import Fleet
 from omnitag.printers import ZebraPrinter
 from omnitag.threaded import ThreadedDriver
 
-__version__ = "0.0.1"
+__version__ = "0.1.0"
 
 __all__ = [
     "DriverCapabilities",

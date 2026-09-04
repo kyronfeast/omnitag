@@ -14,7 +14,12 @@ through the base class, meaning a WYUAN reader can share a fleet with an Impinj
 LLRP reader without either starving the other.
 
 The loop is *polled* inventory: send the 0x01 command, read the response
-frame(s), yield each tag, repeat. The reader's own scan time paces it.
+frame(s), yield each tag, repeat. The reader's own scan time paces it. If the
+reader has been configured into *real-time* mode (it ignores polls and pushes
+one ``0xEE`` frame per tag instead), the same loop simply consumes those pushes.
+
+Wire format and field meanings are verified against the vendor's SDK and demo
+sources — see ``docs/wyuan-protocol.md``.
 
 Transport is injectable — pass any object with ``read(n)`` / ``write(b)`` /
 ``close()``. In production that's a ``serial.Serial`` (pyserial, the ``[wyuan]``
@@ -57,10 +62,19 @@ class WyuanReader(ThreadedDriver):
         scan_time: int = 2,
         q_value: int = 4,
         session: int = 0,
+        fast_id: bool = False,
         read_timeout: float = 3.0,
         transport: SerialTransport | None = None,
         max_queue: int = 1000,
     ) -> None:
+        """Configure a reader; nothing is opened until ``async with``.
+
+        ``antenna_count`` matters beyond capabilities: readers with more than 8
+        ports report the antenna as a plain index rather than a bitmask, and the
+        driver decodes accordingly. ``scan_time`` is in 100 ms units (``0`` =
+        unlimited). ``fast_id`` asks Impinj Monza tags for their TID alongside
+        the EPC (``TagReport.tid``).
+        """
         super().__init__(reader_id=reader_id or f"wyuan:{port}", max_queue=max_queue)
         self._port = port
         self._baudrate = baudrate
@@ -70,6 +84,7 @@ class WyuanReader(ThreadedDriver):
         self._scan_time = scan_time
         self._q_value = q_value
         self._session = session
+        self._fast_id = fast_id
         self._read_timeout = read_timeout
         self._transport = transport
 
@@ -81,9 +96,7 @@ class WyuanReader(ThreadedDriver):
         try:
             import serial  # type: ignore[import-untyped]  # pyserial — the [wyuan] extra
         except ModuleNotFoundError as exc:  # pragma: no cover - env dependent
-            raise RuntimeError(
-                "WyuanReader needs pyserial: pip install 'omnitag[wyuan]'"
-            ) from exc
+            raise RuntimeError("WyuanReader needs pyserial: pip install 'omnitag[wyuan]'") from exc
         self._transport = serial.Serial(
             self._port,
             baudrate=self._baudrate,
@@ -120,14 +133,20 @@ class WyuanReader(ThreadedDriver):
             adr=self._adr,
             antenna=self._antenna,
             scan_time=self._scan_time,
+            fast_id=self._fast_id,
         )
         while not stop.is_set():
             transport.write(cmd)
             yield from self._drain_inventory(transport, stop)
 
+    def _to_report(self, t: p.InventoryTag) -> TagReport:
+        # RSSI stays None: the reader's byte is raw, uncalibrated (see protocol.py).
+        return TagReport(epc=t.epc, antenna=t.antenna, rssi_dbm=None, tid=t.tid)
+
     def _drain_inventory(
         self, transport: SerialTransport, stop: threading.Event
     ) -> Iterator[TagReport]:
+        n_ant = self._antenna_count
         while not stop.is_set():
             frame = _read_frame(transport)
             if frame is None:
@@ -136,14 +155,27 @@ class WyuanReader(ThreadedDriver):
                 resp = p.parse_frame(frame)
             except p.ProtocolError:
                 return  # resync by re-polling
+            if resp.re_cmd == p.REALTIME:
+                # Reader is in real-time push mode: one tag per 0xEE frame, and
+                # 0x28 heartbeats when idle. Keep consuming; never re-poll.
+                if resp.status == p.RT_TAG:
+                    try:
+                        yield self._to_report(p.parse_realtime_tag(resp.data, antenna_count=n_ant))
+                    except p.ProtocolError:
+                        pass
+                continue
             if resp.re_cmd != p.INVENTORY:
                 return
             if p.status_carries_tags(resp.status):
-                for t in p.parse_inventory(resp.data)[0]:
-                    yield TagReport(epc=t.epc, antenna=t.antenna, rssi_dbm=None)
+                try:
+                    tags, _ = p.parse_inventory(resp.data, antenna_count=n_ant)
+                except p.ProtocolError:
+                    return  # malformed payload — drop the frame, re-poll
+                for t in tags:
+                    yield self._to_report(t)
                 if resp.status == p.ST_MORE:
                     continue  # 0x03: further tags in the next frame(s)
-            return  # terminal status (done / timeout / mem-full / statistic)
+            return  # terminal status (done / timeout / mem-full / statistic / ant error)
 
 
 def _read_exact(transport: SerialTransport, n: int) -> bytes | None:

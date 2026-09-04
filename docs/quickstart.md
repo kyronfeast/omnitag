@@ -34,10 +34,12 @@ Point a driver at a reader, then loop over the tags it sees:
 import asyncio
 from omnitag import LLRPDriver
 
+
 async def main() -> None:
     async with LLRPDriver("192.168.1.10", reader_id="dock-1") as reader:
         async for tag in reader.inventory():
             print(reader.capabilities.reader_id, tag.epc_hex, tag.antenna)
+
 
 asyncio.run(main())
 ```
@@ -54,14 +56,16 @@ knows which reader it came from:
 import asyncio
 from omnitag import Fleet, LLRPDriver, WyuanReader
 
+
 async def main() -> None:
     async with (
         LLRPDriver("192.168.1.10", reader_id="dock") as impinj,
-        WyuanReader("COM3", reader_id="line-4") as wyuan,   # a serial reader
+        WyuanReader("COM3", reader_id="line-4") as wyuan,  # a serial reader
     ):
         fleet = Fleet([impinj, wyuan])
         async for sourced in fleet.stream():
             print(sourced.reader_id, sourced.tag.epc_hex)
+
 
 asyncio.run(main())
 ```
@@ -76,15 +80,17 @@ never reaches your system. It's a [llrpkit](https://pypi.org/project/llrpkit/)
 from llrpkit import AntennaPolicy, CatalogEntry, ItemCatalog, ReaderPolicy
 
 policy = ReaderPolicy(
-    catalog=ItemCatalog(entries=[
-        CatalogEntry(match="epc_prefix", value="e200aa", category="pails"),
-        CatalogEntry(match="epc_prefix", value="e200bb", category="pickles"),
-    ]),
+    catalog=ItemCatalog(
+        entries=[
+            CatalogEntry(match="epc_prefix", value="e200aa", category="pails"),
+            CatalogEntry(match="epc_prefix", value="e200bb", category="pickles"),
+        ]
+    ),
     antennas={4: AntennaPolicy(mode="allow", categories={"pails"})},  # line 4 sees only pails
 )
 
 async for sourced in fleet.stream(policy=policy):
-    ...   # only the tags that survived the policy, on every reader
+    ...  # only the tags that survived the policy, on every reader
 ```
 
 Next: [Architecture](architecture.md) for how the pieces fit, or the

@@ -6,6 +6,16 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-04
+
+First real release: `pip install omnitag`.
+
+**Hardware status.** The LLRP driver runs against llrpkit's emulator and the
+same protocol stack llrpkit ships for Impinj readers. The WYUAN serial driver and
+the Zebra ZT411 encoder are verified line-by-line against their vendors' own
+SDK sources and programming guides, and exhaustively against fakes — but not
+yet on a physical unit. Treat those two as *alpha*: field reports welcome.
+
 ### Added
 
 - **Driver seam** (`omnitag.driver`): `ReaderDriver` protocol, vendor-neutral
@@ -32,8 +42,7 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   build, frame + multi-tag inventory parse) and `WyuanReader`, which polls the
   `0x01` inventory command and normalizes tags into `TagReport`. Transport is
   injectable, so the driver is fully tested without hardware (fake serial). Adds
-  the `[wyuan]` extra (pyserial) and a protocol reference (`docs/wyuan-protocol.md`)
-  including the three fields to VERIFY against a physical reader.
+  the `[wyuan]` extra (pyserial) and a protocol reference (`docs/wyuan-protocol.md`).
 - Tests against llrpkit's emulator (no hardware) including one proving a blocking
   reader does not gate an async one, and one running the WYUAN driver beside an
   LLRP reader in a single fleet under one shared ignore policy; `examples/demo.py`
@@ -61,7 +70,25 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   position). Confirmed `^RFW,H,,,E` is correct for a 96-bit hex EPC and `bank="A"`
   is valid on the ZT400 series; `build_read` now uses the documented `^HV#,n,h`
   host-verification form.
+- **WYUAN driver verified against the vendor SDK.** The three fields previously
+  marked VERIFY are settled from the UHFReader288 DLL manual and the shipped
+  C++/C# demo sources: EPC length is a byte count (as implemented), RSSI is raw
+  (as implemented), and the antenna byte is a bitmask on 1/4/8-port readers but a
+  0-based index on 12/16-port readers — `antenna_from_byte`/`parse_inventory`
+  now take `antenna_count` and `WyuanReader` threads its own through, so 12/16-port
+  units decode correctly. Also from the SDK: the `QValue` byte's flag bits are
+  modelled (`fast_id=`, `phase=`, `statistics=`) with Q/session/antenna range
+  validation; FastID blocks split EPC from the 12-byte TID (`TagReport.tid`); the
+  vendor's real-time push mode (`0xEE` tag frames + `0x28` heartbeats) is parsed
+  and consumed, so a reader left in that mode streams instead of stalling; the
+  `0x26` statistic packet has a parser; `scan_time=0` (unlimited) is honoured;
+  truncated payloads raise `ProtocolError` instead of silently mis-parsing.
 
-## [0.0.1] - name reservation
+## [0.0.1] - 2026-08-30
+
+Name reservation.
 
 Placeholder release reserving the `omnitag` name on PyPI.
+
+[Unreleased]: https://github.com/kyronfeast/omnitag/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/kyronfeast/omnitag/releases/tag/v0.1.0

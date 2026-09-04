@@ -76,11 +76,92 @@ def test_parse_inventory_skips_phase_freq_block() -> None:
     assert tags[0].antenna == 1  # 0x01 → antenna 1
 
 
-def test_antenna_mapping() -> None:
+def test_antenna_mapping_bitmask_for_small_readers() -> None:
+    # 1/4/8-port readers: one-hot bitmask (manual §8.2.1: 0x04 → antenna 3)
     assert p.antenna_from_byte(0x01) == 1
     assert p.antenna_from_byte(0x04) == 3
     assert p.antenna_from_byte(0x08) == 4
     assert p.antenna_from_byte(0x00) is None
+    assert p.antenna_from_byte(0x80, antenna_count=8) == 8
+
+
+def test_antenna_mapping_index_for_large_readers() -> None:
+    # 12/16-port readers: plain 0-based index (DLL manual §3.2.1, manual §8.2.1)
+    assert p.antenna_from_byte(0x00, antenna_count=16) == 1
+    assert p.antenna_from_byte(0x0F, antenna_count=16) == 16
+    assert p.antenna_from_byte(0x0B, antenna_count=12) == 12
+    # parse_inventory threads antenna_count through
+    epc = bytes.fromhex("e200dd000000000000000000")
+    data = bytes([0x0B, 0x01, len(epc)]) + epc + bytes([0x40])
+    tags, _ = p.parse_inventory(data, antenna_count=16)
+    assert tags[0].antenna == 12
+
+
+def test_epc_length_is_a_byte_count() -> None:
+    # Manual §8.4.22: "Len: 1 byte, the byte length of the EPC/TID". A 12-byte
+    # EPC is announced as 0x0C, not 0x06 words — parse must consume exactly 12.
+    epc = bytes.fromhex("30395dfa4c0000000000000a")
+    data = bytes([0x01, 0x01, 0x0C]) + epc + bytes([0x33])
+    tags, _ = p.parse_inventory(data)
+    assert tags[0].epc == epc and tags[0].rssi_raw == 0x33
+
+
+def test_fast_id_block_splits_epc_and_tid() -> None:
+    # bit7 set: block is EPC + 12-byte TID, N = total length (manual §8.2.1)
+    epc = bytes.fromhex("e200aa00000000000000000a")
+    tid = bytes.fromhex("e28011702000000000000001")
+    length = 0x80 | (len(epc) + len(tid))
+    data = bytes([0x01, 0x01, length]) + epc + tid + bytes([0x5A])
+    tags, _ = p.parse_inventory(data)
+    assert tags[0].epc == epc
+    assert tags[0].tid == tid
+    # a plain block has no TID
+    plain = bytes([0x01, 0x01, len(epc)]) + epc + bytes([0x5A])
+    assert p.parse_inventory(plain)[0][0].tid is None
+
+
+def test_build_inventory_q_flags_and_validation() -> None:
+    fast = p.build_inventory(q_value=4, fast_id=True, phase=True, statistics=True)
+    q_byte = fast[3]  # Len, Adr, Cmd, then QValue
+    assert q_byte & 0x0F == 4
+    assert q_byte & p.QF_FAST_ID and q_byte & p.QF_PHASE and q_byte & p.QF_STATISTICS
+    with pytest.raises(ValueError):
+        p.build_inventory(q_value=16)  # Q is 4 bits
+    with pytest.raises(ValueError):
+        p.build_inventory(session=7)
+    with pytest.raises(ValueError):
+        p.build_inventory(antenna=17)
+    # scan_time=0 means unlimited and must be sent as 0, not defaulted
+    unlimited = p.build_inventory(antenna=1, scan_time=0)
+    assert unlimited[3 + 4] == 0x00  # QValue, Session, Target, Ant, ScanTime
+    assert p.build_inventory(antenna=16)[3 + 3] == 0x8F
+
+
+def test_parse_realtime_push_frame() -> None:
+    # 0xEE / 0x00 frames carry ONE tag with no Num byte: Ant, Len, EPC, RSSI
+    epc = bytes.fromhex("e200ee000000000000000000")
+    data = bytes([0x05, len(epc)]) + epc + bytes([0x48])  # Ant 0x05 → ants 1 & 3
+    tag = p.parse_realtime_tag(data)
+    assert tag.epc == epc and tag.rssi_raw == 0x48 and tag.antenna == 3
+    with pytest.raises(p.ProtocolError):
+        p.parse_realtime_tag(b"\x01\x0c")  # truncated
+
+
+def test_parse_statistics_packet() -> None:
+    # 0x26: Ant(1), ReadRate(2), TotalCount(4), big-endian
+    stats = p.parse_statistics(bytes([0x01, 0x01, 0x2C, 0x00, 0x00, 0x03, 0xE8]))
+    assert stats.antenna_byte == 1
+    assert stats.read_rate == 300
+    assert stats.total_count == 1000
+    with pytest.raises(p.ProtocolError):
+        p.parse_statistics(b"\x01\x02")
+
+
+def test_truncated_blocks_raise() -> None:
+    with pytest.raises(p.ProtocolError):
+        p.parse_inventory(bytes([0x01, 0x01, 0x0C, 0xAA]))  # EPC cut short
+    with pytest.raises(p.ProtocolError):
+        p.parse_inventory(bytes([0x01, 0x01, 0x41, 0xAA, 0x50]))  # phase trailer missing
 
 
 def test_status_helpers() -> None:

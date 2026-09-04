@@ -45,15 +45,16 @@ async def main() -> None:
             LLRPDriver("127.0.0.1", b.port, reader_id="line-b") as db,
         ):
             for caps in Fleet([da, db]).capabilities:
-                print(f"  reader {caps.reader_id}: {caps.kind} model {caps.model} "
-                      f"antennas={caps.antenna_count} gpio={caps.gpio}")
+                print(
+                    f"  reader {caps.reader_id}: {caps.kind} model {caps.model} "
+                    f"antennas={caps.antenna_count} gpio={caps.gpio}"
+                )
             print()
             fleet = Fleet([da, db])
             count = 0
             stream = fleet.stream(max_tags=6, duration=6.0, policy=policy)
             async for s in stream:
-                print(f"  [{s.reader_id}] {s.tag.epc_hex}  ant {s.tag.antenna}  "
-                      f"[{s.tag.category}]")
+                print(f"  [{s.reader_id}] {s.tag.epc_hex}  ant {s.tag.antenna}  [{s.tag.category}]")
                 count += 1
                 if count >= 8:
                     break
@@ -62,8 +63,7 @@ async def main() -> None:
         await b.stop()
 
     snap = policy.counters()
-    print(f"\nkept {snap['kept']} · dropped {snap['dropped']} "
-          f"({snap['by_category']})")
+    print(f"\nkept {snap['kept']} · dropped {snap['dropped']} ({snap['by_category']})")
 
 
 if __name__ == "__main__":

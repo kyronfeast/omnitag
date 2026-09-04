@@ -20,7 +20,7 @@ language does out of the box.
 
 ```python
 async for sourced in fleet.stream(policy=policy):
-    emit(sourced)   # one tag → one JSON message
+    emit(sourced)  # one tag → one JSON message
 ```
 
 The `emit` function decides *how* the tag leaves the process. Three common choices:
@@ -42,7 +42,7 @@ Publish each tag to a broker topic; any number of apps subscribe. Swap `emit`
 for a publish (using `paho-mqtt`, `aiomqtt`, etc.):
 
 ```python
-client.publish("omnitag/tags", line)   # line = the same JSON string
+client.publish("omnitag/tags", line)  # line = the same JSON string
 ```
 
 Your C# app subscribes with any MQTT client (e.g. MQTTnet) — no Python involved.

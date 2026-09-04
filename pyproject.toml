@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "omnitag"
-version = "0.0.1"
+version = "0.1.0"
 description = "OmniTag RFID — a multi-vendor RFID reader layer (one interface for every reader), built on llrpkit."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -12,7 +12,7 @@ license = "MIT"
 authors = [{ name = "kyronfeast" }]
 keywords = ["rfid", "rain-rfid", "llrp", "impinj", "reader", "asyncio", "multi-vendor"]
 classifiers = [
-  "Development Status :: 2 - Pre-Alpha",
+  "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3 :: Only",
@@ -36,7 +36,7 @@ dev = [
   "pytest>=8",
   "pytest-asyncio>=0.24",
   "mypy>=1.11",
-  "ruff>=0.15",
+  "ruff>=0.16.6",
   "build>=1.2",
   "twine>=5",
 ]
@@ -47,6 +47,7 @@ docs = [
 [project.urls]
 Homepage = "https://github.com/kyronfeast/omnitag"
 Repository = "https://github.com/kyronfeast/omnitag"
+Documentation = "https://kyronfeast.github.io/omnitag/"
 Changelog = "https://github.com/kyronfeast/omnitag/blob/main/CHANGELOG.md"
 Issues = "https://github.com/kyronfeast/omnitag/issues"
 
