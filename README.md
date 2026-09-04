@@ -10,10 +10,23 @@ reference driver, and merges any mix of readers into a single stream with a
 dashboard apply across the whole fleet regardless of what each reader speaks
 underneath.
 
-> 🚧 **Pre-alpha.** The driver seam, the LLRP driver, the WYUAN serial driver,
-> the fleet manager, and a **Zebra ZT411 tag encoder** (read *and* write tags)
-> are in place and tested against llrpkit's emulator and fakes — no hardware
-> required. A capability-gated dashboard and more drivers are next.
+[![PyPI](https://img.shields.io/pypi/v/omnitag.svg)](https://pypi.org/project/omnitag/)
+[![Python](https://img.shields.io/pypi/pyversions/omnitag.svg)](https://pypi.org/project/omnitag/)
+[![CI](https://github.com/kyronfeast/omnitag/actions/workflows/ci.yml/badge.svg)](https://github.com/kyronfeast/omnitag/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-kyronfeast.github.io%2Fomnitag-indigo)](https://kyronfeast.github.io/omnitag/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+```console
+$ pip install omnitag              # core + the LLRP (Impinj) driver
+$ pip install "omnitag[wyuan]"     # + the WYUAN serial driver
+```
+
+> **Alpha.** The driver seam, the LLRP driver, the WYUAN serial driver, the
+> fleet manager, and a **Zebra ZT411 tag encoder** (read *and* write tags) are in
+> place and tested against llrpkit's emulator and fakes — no hardware required.
+> The WYUAN and ZT411 pieces are verified against their vendors' SDK sources and
+> programming guides but not yet on a physical unit; field reports welcome. A
+> capability-gated dashboard and more drivers are next.
 
 ## Why
 
@@ -54,6 +67,7 @@ changed; it just sees a merged stream now.
 ## Try it (no hardware)
 
 ```console
+$ git clone https://github.com/kyronfeast/omnitag && cd omnitag
 $ pip install -e ".[dev]"
 $ python examples/demo.py
 two readers, one policy: line 4 sees only pails
@@ -69,9 +83,10 @@ kept 8 · dropped 20 ({'pickles-fresh': 20})
 
 ## Documentation
 
-Full docs live in [`docs/`](docs/) and build into a site with mkdocs (install
-guide, quickstart, architecture, a plain-language concurrency/CPU page, per-driver
-guides, the WYUAN protocol reference, and an API index):
+Full docs are published at **[kyronfeast.github.io/omnitag](https://kyronfeast.github.io/omnitag/)**
+(install guide, quickstart, architecture, a plain-language concurrency/CPU page,
+per-driver guides, the WYUAN protocol reference, the ZT411 printer guide, and an
+API index). They live in [`docs/`](docs/) and build locally with mkdocs:
 
 ```console
 $ pip install -e ".[docs]"

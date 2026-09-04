@@ -1,5 +1,6 @@
 site_name: OmniTag RFID
 site_description: One interface for every RFID reader — a multi-vendor reader layer built on llrpkit.
+site_url: https://kyronfeast.github.io/omnitag/
 repo_url: https://github.com/kyronfeast/omnitag
 repo_name: kyronfeast/omnitag
 
