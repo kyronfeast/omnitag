@@ -83,15 +83,27 @@ class ZebraPrinter:
         bank: str = "E",
         human_text: str | None = None,
         barcode: bool = False,
+        retry: int | None = None,
+        error_action: str | None = None,
+        program_position: str | None = None,
     ) -> str:
         """Print one label and encode ``epc`` into its tag. Returns the EPC hex.
 
         ``human_text`` prints readable text on the label; ``barcode=True`` adds a
-        Code 128 of the EPC. Raises :class:`~omnitag.printers.zpl.ZPLError` on a
-        bad EPC before anything is sent.
+        Code 128 of the EPC. ``retry`` (1-10) sets how many labels the printer
+        attempts if encoding fails (it voids and re-tries); ``error_action``
+        (``N``/``P``/``E``) is what to do if it still fails; ``program_position``
+        (e.g. ``"F0"``) sets where on the label the tag is encoded. Raises
+        :class:`~omnitag.printers.zpl.ZPLError` on bad input before anything is sent.
         """
         job = zpl.build_encode(
-            epc, bank=bank, human_text=human_text, barcode=barcode
+            epc,
+            bank=bank,
+            human_text=human_text,
+            barcode=barcode,
+            retry=retry,
+            error_action=error_action,
+            program_position=program_position,
         )
         await self._send(job)
         return zpl.normalize_epc(epc)

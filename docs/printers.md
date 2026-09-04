@@ -56,23 +56,36 @@ demo):
 ^XZ
 ```
 
-`^RFW,H,,,E` is the RFID write: **W**rite, **H**ex, EPC-96 memory bank (**E**). Use
-`bank="A"` for EPC lengths other than 96-bit. `print_zpl(...)` sends arbitrary ZPL
-if you need a custom label template.
+`^RFW,H,,,E` is the RFID write: format **H**ex, Gen2 memory bank **E** (EPC-96).
+On the ZT411 (a ZT400-series printer) use `bank="A"` for EPC lengths other than
+96-bit — it auto-adjusts the PC bits. `print_zpl(...)` sends arbitrary ZPL if you
+need a custom label template.
 
-## Verify on the physical ZT411
+## Reliability: void/retry and encode position
 
-The ZPL structure is straight from Zebra's ZPL RFID guide, but two details can
-vary with firmware and label setup — each isolated to one place so a fix is
-trivial:
+If a tag fails to encode, a Zebra printer voids the label ("VOID" printed across
+it) and retries. You can control that from `encode_epc`:
 
-1. **Memory-bank code** — `encode_epc(bank=...)`. `E` is EPC-96; `A` auto-sizes PC
-   bits for other lengths.
-2. **Session setup** — the leading `^RS8`. If your labels are configured
-   differently, adjust it in `omnitag/printers/zpl.py` (`session_setup`).
+```python
+await printer.encode_epc(
+    epc,
+    retry=3,               # attempt up to 3 labels on encode failure
+    error_action="P",      # then Pause (N = drop and move on, E = Error)
+    program_position="F0", # where on the label the tag is encoded
+)
+```
 
-Also confirm the printer's **media/RFID calibration** is done on the device itself
-(via its display or WebUI) — OmniTag sends the encode job, but the printer must
-already know where the tag sits in the label.
+These map to Zebra's `^RSt,p,v,n,e` setup command.
 
-*Source: Zebra ZPL Programming Guide, RFID commands (`^RF` / `^RS` / `^HV`).*
+## One-time printer setup (on the device)
+
+OmniTag sends the encode job, but the printer must know where the tag sits under
+the print head. Run **RFID tag calibration** on the ZT411 itself (front-panel
+menu or its WebUI) once per label stock; `program_position` fine-tunes it from
+ZPL. Also point the driver at the printer's **raw ZPL port, TCP 9100** (the
+default), reachable over the ZT411's standard Ethernet.
+
+*Verified against Zebra's ZPL & ZBI2 Programming Guide (RFID commands `^RF`,
+`^RS`, `^HV`) and the ZT400-series spec sheet: `^RFW,H,,,E` is correct for a
+96-bit hex EPC, `bank="A"` is supported on the ZT400 series, and `^RS8` (Gen2)
+is the default tag type — omittable on this Gen2-only printer.*

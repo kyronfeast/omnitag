@@ -55,6 +55,12 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   it's fully tested with no printer. This closes OmniTag's loop — read tags with
   a driver, mint new ones with the printer. Adds `examples/encode_demo.py` (read
   → encode, no hardware) and `docs/printers.md`.
+- **ZebraPrinter reliability controls**, verified against Zebra's ZPL & ZBI2
+  Programming Guide: `encode_epc(retry=, error_action=, program_position=)` maps
+  to the `^RSt,p,v,n,e` setup command (void/retry-on-encode-failure and encode
+  position). Confirmed `^RFW,H,,,E` is correct for a 96-bit hex EPC and `bank="A"`
+  is valid on the ZT400 series; `build_read` now uses the documented `^HV#,n,h`
+  host-verification form.
 
 ## [0.0.1] - name reservation
 
