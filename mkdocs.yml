@@ -44,6 +44,7 @@ nav:
       - LLRP (Impinj) driver: drivers/llrp.md
       - WYUAN serial driver: drivers/wyuan.md
       - WYUAN protocol reference: wyuan-protocol.md
+  - Gated inventory (photo eyes): gated-inventory.md
   - Encoding tags (Zebra printer): printers.md
   - API reference: api.md
   - Contributing: contributing.md

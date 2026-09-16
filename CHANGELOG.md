@@ -6,6 +6,32 @@ project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-16
+
+### Added
+
+- **Gated inventory on every driver** — a photo eye on the reader's input line
+  turns the tag firehose into one `InventoryWindow` per object, empty when the
+  object passed with nothing readable (the exception a line most needs). New
+  `windows()` on `LLRPDriver`, `WyuanReader`, `ThreadedDriver` and `Fleet`
+  (`SourcedWindow` = window + station), a `gpi_trigger` capability flag, and a
+  `docs/gated-inventory.md` page with the wiring table and interposing-relay
+  guidance. `LLRPDriver(gpi_trigger=N)` lets the R700 own the trigger via
+  llrpkit's GPI-triggered ROSpec; `WyuanReader(gpi_trigger=True)` polls IN1
+  (`0x47`) on its worker thread and inventories only while the pin is active —
+  deliberately *not* the W-series' built-in trigger mode, which stops answering
+  GPIO queries and would make an untagged pail invisible. Wiring defaults follow
+  the hardware: R700 inputs are active-high (isolated, idle low), WYUAN IN1 is
+  active-low (TTL pull-up), both flippable per reader.
+- WYUAN protocol: `0x46` GPIO control, `0x47` GPIO status (`GPIOStatus`), and
+  `0x76` working mode (`MODE_ANSWERING` / `MODE_REALTIME` / `MODE_REALTIME_TRIGGER`).
+- `examples/gated_line.py`: an emulated R700 and a fake serial WYUAN, three
+  pails, one with no tag — no hardware.
+
+### Changed
+
+- Requires llrpkit ≥ 0.3.0 (gating module, `Reader.windows()`).
+
 ## [0.1.0] - 2026-09-04
 
 First real release: `pip install omnitag`.
@@ -90,5 +116,6 @@ Name reservation.
 
 Placeholder release reserving the `omnitag` name on PyPI.
 
-[Unreleased]: https://github.com/kyronfeast/omnitag/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/kyronfeast/omnitag/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/kyronfeast/omnitag/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/kyronfeast/omnitag/releases/tag/v0.1.0

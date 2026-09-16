@@ -28,6 +28,13 @@ options — `session`, `antennas`, `search_mode`, `tx_power_dbm`, `include_phase
 `duration`, `max_tags`, and crucially `policy=` for host-side ignore filtering.
 See the [llrpkit docs](https://kyronfeast.github.io/llrpkit/) for the full list.
 
+## Gating on a photo eye
+
+Pass `gpi_trigger=N` (the GPI port the sensor or its relay drives) and the
+**reader itself** starts and stops reading on that line; `reader.windows()`
+yields one window per object. R700 inputs are active-high by default — see
+[Gated inventory](../gated-inventory.md).
+
 ## Capabilities
 
 `LLRPDriver` reports `kind="llrp"`, `isolation="loop"` (it's async-native and

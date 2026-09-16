@@ -35,6 +35,13 @@ It **polls**: send the "inventory" command, read back the tags the reader found,
 repeat. The reader's own scan time paces the loop. Multi-frame responses (a big
 tag population split across several replies) are handled automatically.
 
+## Gating on a photo eye
+
+Pass `gpi_trigger=True` and the driver reads only while the reader's **IN1** pin
+is active (pulled low by default), yielding one window per object from
+`reader.windows()` — see [Gated inventory](../gated-inventory.md) for wiring
+and why this uses answering mode rather than the reader's built-in trigger mode.
+
 ## Capabilities
 
 `WyuanReader` reports `kind="wyuan"`, `model="UHFReader288"`, and

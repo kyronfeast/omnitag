@@ -21,7 +21,7 @@ import asyncio
 from collections.abc import AsyncIterator, Sequence
 from typing import Any
 
-from omnitag.driver import DriverCapabilities, ReaderDriver, SourcedTag
+from omnitag.driver import DriverCapabilities, ReaderDriver, SourcedTag, SourcedWindow
 
 _DONE = object()  # sentinel: one driver's inventory finished
 
@@ -86,5 +86,49 @@ class Fleet:
                 t.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
 
+        if errors:
+            raise errors[0]
+
+    async def windows(self, **opts: Any) -> AsyncIterator[SourcedWindow]:
+        """Merge every reader's gated-inventory windows into one stream.
+
+        Each driver must have been constructed with its GPI trigger (its
+        ``capabilities.gpi_trigger`` is true) — the wiring lives with the
+        reader, so the same options (``policy=``, ``settle=``, ``max_open=``)
+        go to all of them. Yields :class:`~omnitag.driver.SourcedWindow`: which
+        station, when the object was in front of it, and what it carried —
+        an empty window meaning "something passed, nothing readable on it".
+        """
+        missing = [d.capabilities.reader_id for d in self.drivers if not d.capabilities.gpi_trigger]
+        if missing:
+            raise RuntimeError(f"no GPI trigger configured on reader(s): {', '.join(missing)}")
+        queue: asyncio.Queue[Any] = asyncio.Queue()
+        errors: list[BaseException] = []
+
+        async def pump(driver: Any) -> None:
+            rid = driver.capabilities.reader_id
+            try:
+                async for window in driver.windows(**opts):
+                    await queue.put(SourcedWindow(reader_id=rid, window=window))
+            except asyncio.CancelledError:
+                raise
+            except BaseException as exc:  # noqa: BLE001 — reported after drain
+                errors.append(exc)
+            finally:
+                await queue.put(_DONE)
+
+        tasks = [asyncio.create_task(pump(d)) for d in self.drivers]
+        remaining = len(tasks)
+        try:
+            while remaining:
+                item = await queue.get()
+                if item is _DONE:
+                    remaining -= 1
+                    continue
+                yield item
+        finally:
+            for t in tasks:
+                t.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
         if errors:
             raise errors[0]

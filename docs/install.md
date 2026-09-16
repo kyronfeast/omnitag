@@ -41,7 +41,7 @@ reinstalling. The `[dev]` part pulls in the test and lint tools.
 
 ```console
 $ python -c "import omnitag; print(omnitag.__version__)"
-0.1.0
+0.2.0
 ```
 
 Then head to the [Quickstart](quickstart.md) to see it stream tags.
