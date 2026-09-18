@@ -27,7 +27,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
-    from llrpkit import TagReport
+    from llrpkit import InventoryWindow, TagReport
 
 
 @dataclass(frozen=True)
@@ -58,6 +58,8 @@ class DriverCapabilities:
     gpio: bool = False
     tag_access: bool = False
     rssi_dbm: bool = True
+    #: can gate inventory on a sensor line and present one window per trip
+    gpi_trigger: bool = False
     #: host-side ignore policy always works — it acts on the normalized stream
     host_side_policy: bool = True
     #: room for vendor extras (Octane phase/Doppler/TID, etc.) without a schema change
@@ -97,3 +99,17 @@ class ReaderDriver(Protocol):
     def inventory(self, **opts: Any) -> AsyncIterator[TagReport]:
         """Stream normalized tags until the driver's stop condition."""
         ...
+
+
+@dataclass(frozen=True)
+class SourcedWindow:
+    """One gated-inventory window plus which reader in the fleet produced it.
+
+    A single driver's ``windows()`` yields bare
+    :class:`~llrpkit.InventoryWindow`; a :class:`Fleet` wraps each with its
+    ``reader_id`` so "pail passed station 3 with these tags" (or with none)
+    arrives already attributed to the station.
+    """
+
+    reader_id: str
+    window: InventoryWindow

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "omnitag"
-version = "0.1.0"
+version = "0.2.0"
 description = "OmniTag RFID — a multi-vendor RFID reader layer (one interface for every reader), built on llrpkit."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -25,7 +25,7 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
-  "llrpkit>=0.2.0",
+  "llrpkit>=0.3.0",
 ]
 
 [project.optional-dependencies]

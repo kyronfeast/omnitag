@@ -47,11 +47,14 @@ class FakeSerial:
 
     def read(self, size: int) -> bytes:
         with self._lock:
-            if not self._buf:
-                return b""
-            take = self._buf[:size]
+            take = bytes(self._buf[:size])
             del self._buf[:size]
-            return bytes(take)
+        if not take:
+            # A real serial port blocks up to its timeout on an empty line; do the
+            # same (briefly) so the worker thread can't busy-spin and flood the
+            # bounded queue with thousands of polls between two consumer reads.
+            threading.Event().wait(0.005)
+        return take
 
     def close(self) -> None:
         pass

@@ -18,7 +18,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from typing import Any
 
-from llrpkit import Reader, TagReport
+from llrpkit import InventoryWindow, Reader, TagReport
 
 from omnitag.driver import DriverCapabilities
 
@@ -29,6 +29,12 @@ class LLRPDriver:
     ``reader_id`` names this reader in a fleet and on downstream payloads;
     it defaults to ``host:port``. Extra keyword arguments flow straight to
     llrpkit's :class:`~llrpkit.Reader` (timeouts, Impinj extensions).
+
+    ``gpi_trigger`` names the GPI port a photo eye (or its relay) is wired to;
+    the reader then starts and stops reading on that line itself and
+    :meth:`windows` yields one bundle of tags per trip. An R700's inputs read
+    *low* with nothing applied, so a sensor putting voltage on the pin is the
+    active state — ``gpi_active_high=True`` by default.
     """
 
     def __init__(
@@ -37,11 +43,15 @@ class LLRPDriver:
         port: int = 5084,
         *,
         reader_id: str | None = None,
+        gpi_trigger: int | None = None,
+        gpi_active_high: bool = True,
         **reader_kwargs: Any,
     ) -> None:
         self.host = host
         self.port = port
         self.reader_id = reader_id or f"{host}:{port}"
+        self._gpi_trigger = gpi_trigger
+        self._gpi_active_high = gpi_active_high
         self._reader = Reader(host, port, **reader_kwargs)
         self._caps: DriverCapabilities | None = None
 
@@ -71,6 +81,7 @@ class LLRPDriver:
             gpio=True,  # LLRP readers support GPIO
             tag_access=True,  # ...and Gen2 tag memory access
             rssi_dbm=True,
+            gpi_trigger=self._gpi_trigger is not None,
             extras={"impinj_octane": bool(is_impinj)},
         )
 
@@ -78,6 +89,22 @@ class LLRPDriver:
         """Stream normalized tags. Accepts every ``Reader.inventory`` option,
         including ``policy=`` for host-side ignore filtering."""
         return self._reader.inventory(**opts)
+
+    def windows(self, **opts: Any) -> AsyncIterator[InventoryWindow]:
+        """One :class:`~llrpkit.InventoryWindow` per trip of the configured GPI.
+
+        Requires ``gpi_trigger=`` at construction; the active level comes from
+        the reader's own wiring config so a fleet can pass one option set to
+        every reader. Accepts every :meth:`llrpkit.Reader.windows` option
+        (``policy=``, ``settle=``, ``max_open=``, ``gpi_stop_timeout=`` ...).
+        """
+        if self._gpi_trigger is None:
+            raise RuntimeError(f"reader {self.reader_id!r} was not constructed with gpi_trigger=")
+        opts.pop("gpi_trigger", None)
+        opts.pop("gpi_active_high", None)
+        return self._reader.windows(
+            self._gpi_trigger, gpi_active_high=self._gpi_active_high, **opts
+        )
 
     # -- optional capabilities, present because LLRP supports them ----------
 

@@ -16,7 +16,8 @@ dedicated worker thread and bridges each read into an asyncio queue, so the loop
 stays free for async-native drivers and no reader can starve another.
 
 A concrete driver subclasses this and implements just two things: a blocking
-iterator of tags (`_read_blocking`) and its capabilities (`_build_caps`, which
+iterator of tags — and, for sensor-gated readers, ``GPIEdge`` transitions —
+(`_read_blocking`) and its capabilities (`_build_caps`, which
 should declare ``isolation="thread"``). Everything else — the thread lifecycle,
 the thread-safe hand-off, host-side policy, bounded backpressure — is handled
 here, once, correctly.
@@ -35,7 +36,8 @@ from collections.abc import AsyncIterator, Iterator
 from dataclasses import replace
 from typing import Any
 
-from llrpkit import TagReport
+from llrpkit import GPIEdge, InventoryWindow, TagReport
+from llrpkit.gating import END_OF_STREAM, assemble_windows
 
 from omnitag.driver import DriverCapabilities
 
@@ -125,6 +127,8 @@ class ThreadedDriver:
                 break
             if isinstance(item, BaseException):
                 raise item
+            if not isinstance(item, TagReport):
+                continue  # GPI edges belong to windows(), not the flat tag stream
             tag: TagReport = item
             if policy is not None:
                 decision = policy.evaluate(tag)
@@ -135,6 +139,50 @@ class ThreadedDriver:
             count += 1
             if max_tags is not None and count >= max_tags:
                 break
+
+    async def windows(
+        self,
+        *,
+        port: int = 1,
+        active_high: bool = False,
+        settle: float = 0.0,
+        max_open: float | None = 30.0,
+        **opts: Any,
+    ) -> AsyncIterator[InventoryWindow]:
+        """One :class:`~llrpkit.InventoryWindow` per trip of the reader's GPI.
+
+        The worker thread must be yielding ``GPIEdge`` items between tags (a
+        driver constructed with a GPI trigger does). Shares the queue with
+        :meth:`inventory` — run one or the other, not both. ``policy=`` filters
+        tags host-side before they land in a window. ``settle`` defaults to 0
+        here: a serial driver sees its own edges in order with its tags, so
+        there are no stragglers to wait for.
+        """
+        policy = opts.get("policy")
+        relay: asyncio.Queue[Any] = asyncio.Queue()
+
+        async def pump() -> None:
+            while True:
+                item = await self._queue.get()
+                if item is _STOP:
+                    await relay.put(END_OF_STREAM)
+                    return
+                if isinstance(item, TagReport) and policy is not None:
+                    decision = policy.evaluate(item)
+                    if not decision.keep:
+                        continue
+                    item = replace(item, category=decision.category, item_label=decision.item_label)
+                await relay.put(item)
+
+        task = asyncio.create_task(pump())
+        try:
+            async for window in assemble_windows(
+                relay, port=port, active_high=active_high, settle=settle, max_open=max_open
+            ):
+                yield window
+        finally:
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
 
     # -- subclass hooks -----------------------------------------------------
 
@@ -147,8 +195,10 @@ class ThreadedDriver:
     def _build_caps(self) -> DriverCapabilities:  # pragma: no cover - abstract
         raise NotImplementedError("subclasses must build DriverCapabilities(isolation='thread')")
 
-    def _read_blocking(self, stop: threading.Event) -> Iterator[TagReport]:  # pragma: no cover
-        """Yield ``TagReport``s from the blocking SDK until ``stop`` is set.
+    def _read_blocking(  # pragma: no cover
+        self, stop: threading.Event
+    ) -> Iterator[TagReport | GPIEdge]:
+        """Yield ``TagReport``s (and ``GPIEdge``s, if gated) until ``stop`` is set.
 
         MUST block waiting for the next read (never busy-poll) and MUST check
         ``stop.is_set()`` between reads so shutdown is prompt.

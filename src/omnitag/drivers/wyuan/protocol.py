@@ -40,8 +40,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 INVENTORY = 0x01
+GPIO_SET = 0x46  # manual §8.4.10: drive OUT1/OUT2
+GPIO_GET = 0x47  # manual §8.4.11: read IN1 + OUT1/OUT2
+SET_WORK_MODE = 0x76  # manual §8.4.23: answering / real-time / real-time+trigger
 BROADCAST_ADR = 0xFF
 DEFAULT_ADR = 0x00
+
+# Working modes for SET_WORK_MODE (persist across power cycles per the manual).
+MODE_ANSWERING = 0  # host polls; the mode this driver uses
+MODE_REALTIME = 1  # reader pushes 0xEE frames continuously
+MODE_REALTIME_TRIGGER = 2  # reader pushes only while GPI1 is LOW (standalone use)
 
 #: reCmd of frames a reader pushes on its own in *real-time inventory mode*
 #: (manual §8.4.22). Such a reader ignores 0x01 polls and streams instead.
@@ -279,3 +287,52 @@ def parse_statistics(data: bytes) -> InventoryStatistics:
 
 def status_carries_tags(status: int) -> bool:
     return status in _TAG_STATUSES
+
+
+# -- GPIO (manual §8.4.10 / §8.4.11) -------------------------------------------
+
+
+def build_gpio_get(*, adr: int = DEFAULT_ADR) -> bytes:
+    """``0x47`` — ask for the input/output pin states (no parameters)."""
+    return build_command(GPIO_GET, adr=adr)
+
+
+def build_gpio_set(*, out1: bool = True, out2: bool = True, adr: int = DEFAULT_ADR) -> bytes:
+    """``0x46`` — drive OUT1/OUT2. Default TTL level is high; ``False`` pulls low."""
+    bits = (int(out1) & 1) | ((int(out2) & 1) << 1)
+    return build_command(GPIO_SET, bytes([bits]), adr=adr)
+
+
+@dataclass(frozen=True)
+class GPIOStatus:
+    """Decoded ``0x47`` reply: one input, two outputs."""
+
+    in1_high: bool
+    out1_high: bool
+    out2_high: bool
+
+
+def parse_gpio_status(data: bytes) -> GPIOStatus:
+    """Parse a ``0x47`` Data[] byte: bit0 = IN1, bit4 = OUT1, bit5 = OUT2.
+
+    IN1 is a TTL input with a pull-up: it reads *high* with nothing attached and
+    *low* when a sensor (or relay contact) pulls it to ground.
+    """
+    if len(data) < 1:
+        raise ProtocolError("GPIO status reply missing the pin byte")
+    b = data[0]
+    return GPIOStatus(in1_high=bool(b & 0x01), out1_high=bool(b & 0x10), out2_high=bool(b & 0x20))
+
+
+def build_set_work_mode(mode: int, *, adr: int = DEFAULT_ADR) -> bytes:
+    """``0x76`` — set the reader's working mode (persists across power cycles).
+
+    ``MODE_ANSWERING`` (0) is what :class:`~omnitag.drivers.wyuan.WyuanReader`
+    needs. ``MODE_REALTIME_TRIGGER`` (2) makes the reader inventory on its own
+    while GPI1 is low — useful with no host attached, but note that in modes 1
+    and 2 the reader ignores every command except reader-info, this one, and
+    "obtain auto-mode parameters", so the host can no longer read GPIO.
+    """
+    if mode not in (MODE_ANSWERING, MODE_REALTIME, MODE_REALTIME_TRIGGER):
+        raise ValueError(f"mode must be 0, 1 or 2; got {mode}")
+    return build_command(SET_WORK_MODE, bytes([mode]), adr=adr)

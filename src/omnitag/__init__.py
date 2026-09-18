@@ -11,14 +11,14 @@ This is an early build; the driver seam and the LLRP driver are in place, with
 proprietary-reader drivers to follow.
 """
 
-from omnitag.driver import DriverCapabilities, ReaderDriver, SourcedTag
+from omnitag.driver import DriverCapabilities, ReaderDriver, SourcedTag, SourcedWindow
 from omnitag.drivers.llrp import LLRPDriver
 from omnitag.drivers.wyuan import WyuanReader
 from omnitag.fleet import Fleet
 from omnitag.printers import ZebraPrinter
 from omnitag.threaded import ThreadedDriver
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "DriverCapabilities",
@@ -26,6 +26,7 @@ __all__ = [
     "LLRPDriver",
     "ReaderDriver",
     "SourcedTag",
+    "SourcedWindow",
     "ThreadedDriver",
     "WyuanReader",
     "ZebraPrinter",
